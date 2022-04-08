@@ -1,0 +1,9 @@
+div.row {
+  height: 250px;
+}
+div.col-4 {
+  border: solid 1px black;
+  color: rgb(255, 255, 255);
+  font-size: 1.4rem;
+
+}
