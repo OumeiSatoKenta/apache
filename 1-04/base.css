@@ -1,0 +1,24 @@
+/* 1.03 */
+div.row {
+  height: 250px;
+}
+div.col-4 {
+  border: solid 1px black;
+  color: rgb(255, 255, 255);
+  font-size: 1.4rem;
+
+}
+/* 1.04 */
+html, body {
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#renderCanvas {
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
