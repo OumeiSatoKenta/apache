@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>Babyloin.js Viewer 1 Example</title>
+  <!-- ビューアーライブラリの読み込み-->
+  <!-- 1.03 -->
+  <script src="https://cdn.babylonjs.com/viewer/babylon.viewer.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+  <!-- 1.04 -->
+  <script src="https://cdn.babylon.js.com/babylon.js"></script>
+  <script src="https://cdn.babylon.js.com/loaders/babylonjs.loaders.min.js"></script>
+  <script src="https://code.jquery.com/pep/0.4.3/pep.js"></script>
+  <script src=""></script>
+  <!-- stylesheet などの記載略-->
+  <link rel=" stylesheet" type="text/css" href="base.css">
+</head>
+
+<body>
+  <!-- touch-action="none" for best results from PEP -->
+  <canvas id="renderCanvas" touch-action="none"></canvas>
+  <script>
+    // const 要素を取得
+    const canvas = document.getElementById("renderCanvas");
+    // BABYLON 3D エンジンを作成
+    const engine = new BABYLON.Engine(canvas, true);
+
+    // Playgroundのフォーマットにあった自分のコードを追加
+    const createScene = () => {
+      const scene = new BABYLON.Scene(engine);
+      //モデルのロード
+
+      // 音をループして鳴らす
+      const music = new BABYLON.Sound("pomp", "sounds/pomp_and_circumstance.mp3", scene, null, { loop: true, autoplay: true });
+
+      const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2.5, 15, new BABYLON.Vector3(0, 0, 0));
+      camera.attachControl(canvas, true);
+      const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0));
+
+      const ground = buildGround();
+      const box = buildBox();
+      const roof = buildRoof(scene);
+
+      const house = BABYLON.Mesh.MergeMeshes([box, roof], true, false, null, false, true);
+
+      return scene;
+    }
+
+    //+++++++関数化したものたち++++++++
+    const buildGround = () => {
+      //color
+      const groundMat = new BABYLON.StandardMaterial("groundMat");
+      //groundMat.diffuseColor = new BABYLON.Color3(0, 1, 0); //r, g, bで設定する
+      groundMat.diffuseColor = new BABYLON.Color3.Green();
+      const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 10, height: 10 });
+      ground.material = groundMat;
+
+      return ground;
+    }
+
+    const buildBox = () => {
+      //BABYLON.SceneLoader.ImportMeshAsync("", "https://assets.babylonjs.com/meshes/", "box.babylon");
+
+      //豆腐に窓などをつける
+      const faceUV = [];
+      faceUV[0] = new BABYLON.Vector4(0.5, 0.0, 0.75, 1.0);
+      faceUV[1] = new BABYLON.Vector4(0.0, 0.0, 0.25, 1.0);
+      faceUV[2] = new BABYLON.Vector4(0.25, 0.0, 0.5, 1.0);
+      faceUV[3] = new BABYLON.Vector4(0.75, 0.0, 1.0, 1.0);
+      //箱を作成
+      const box = BABYLON.MeshBuilder.CreateBox("box", { faceUV: faceUV, wrap: true });
+      box.scaling.x = 1;
+      box.scaling.y = 1.5;
+      box.scaling.z = 1.5;
+      //box.position.x = 0;
+      box.position.y = 0.75;
+      box.position.z = 0.1;
+
+      //色
+      const boxMat = new BABYLON.StandardMaterial("boxMat");
+      boxMat.diffuseTexture = new BABYLON.Texture("https://assets.babylonjs.com/environments/cubehouse.png");
+      box.material = boxMat;
+
+      return box;
+    }
+
+    const buildRoof = (scene) => {
+      //屋根を作成
+      const roof = BABYLON.MeshBuilder.CreateCylinder(
+        "roof",
+        { diameter: 1.3, height: 2.0, tessellation: 3 }
+      );
+
+      //roof.position.x = 0.1;
+      roof.position.y = 1.8;
+      roof.position.z = 0.1;
+      //roof.rotation.y = 3 * Math.PI / 4;
+      roof.rotation.y = Math.PI / 2;
+      roof.rotation.z = Math.PI / 2;
+
+      //色を追加
+      //屋根
+      const roofMat = new BABYLON.StandardMaterial("roofMat");
+      roofMat.diffuseTexture = new BABYLON.Texture("https://assets.babylonjs.com/environments/roof.jpg", scene);
+      roof.material = roofMat;
+
+      return roof;
+    }
+
+    // createSceneを呼ぶ
+    const scene = createScene();
+
+    // シーンを継続的にレンダリングするためにレンダーループに登録する
+    engine.runRenderLoop(function () {
+      scene.render();
+    });
+
+    // ブラウザのリサイズイベントを監視する
+    window.addEventListener("resize", function () {
+      engine.resize();
+    });
+  </script>
+
+</body>
+
+</html>
