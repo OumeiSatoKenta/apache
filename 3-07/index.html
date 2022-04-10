@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>Babyloin.js Viewer 1 Example</title>
+  <!-- ビューアーライブラリの読み込み-->
+  <!-- 1.03 -->
+  <script src="https://cdn.babylonjs.com/viewer/babylon.viewer.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+  <!-- 1.04 -->
+  <script src="https://cdn.babylon.js.com/babylon.js"></script>
+  <script src="https://cdn.babylon.js.com/loaders/babylonjs.loaders.min.js"></script>
+  <script src="https://code.jquery.com/pep/0.4.3/pep.js"></script>
+  <!-- 3.02 -->
+  <script src="node_modules/earcut/dist/earcut.min.js"></script>
+
+  <!-- stylesheet などの記載略-->
+  <link rel=" stylesheet" type="text/css" href="base.css">
+</head>
+
+<body>
+  <!-- touch-action="none" for best results from PEP -->
+  <div id="holder">
+    <canvas id="renderCanvas" touch-action="none"></canvas>
+  </div>
+  <div id="instructions">
+    <br>
+    <h2>Instructions</h2>
+    <br>
+    Instructions Instructions Instructions Instructions Instructions
+    Instructions Instructions Instructions Instructions Instructions
+    Instructions Instructions Instructions Instructions Instructions
+    Instructions Instructions Instructions Instructions Instructions
+    Instructions Instructions Instructions Instructions Instructions
+    Instructions Instructions Instructions Instructions Instructions
+    Instructions Instructions Instructions Instructions Instructions
+    Instructions Instructions Instructions Instructions Instructions
+  </div>
+
+  <script>
+    // const 要素を取得
+    const canvas = document.getElementById("renderCanvas");
+    // BABYLON 3D エンジンを作成
+    const engine = new BABYLON.Engine(canvas, true);
+
+    // Playgroundのフォーマットにあった自分のコードを追加
+    const createScene = () => {
+      const scene = new BABYLON.Scene(engine);
+      //モデルのロード
+
+      // 音をループして鳴らす
+      const music = new BABYLON.Sound("pomp", "sounds/pomp_and_circumstance.mp3", scene, null, { loop: true, autoplay: true });
+
+      const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2.5, 15, new BABYLON.Vector3(0, 0, 0));
+      camera.attachControl(canvas, true);
+      const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0));
+
+      // ++++ ビルド ++++
+      const Dwellings = buildDwellings(scene);
+      const car = buildCar(scene);
+      const dude = buildDude(scene);
+
+      //テスト用
+      //showParentChild(scene);
+      //const movingSphere = buildSphere(scene);
+
+      return scene;
+    }
+
+    const showParentChild = (scene) => {
+      //3-01 親、子
+      const faceColors = [];
+      faceColors[0] = BABYLON.Color3.Blue();
+      faceColors[1] = BABYLON.Color3.Teal();
+      faceColors[2] = BABYLON.Color3.Red();
+      faceColors[3] = BABYLON.Color3.Purple();
+      faceColors[4] = BABYLON.Color3.Green();
+      faceColors[5] = BABYLON.Color3.Yellow();
+
+      const boxParent = BABYLON.MeshBuilder.CreateBox("Box", { faceColors: faceColors });
+      const boxChild = BABYLON.MeshBuilder.CreateBox("Box", { size: 0.5, faceColors: faceColors });
+      //親子関係にする
+      boxChild.setParent(boxParent);
+
+      // 子boxの座標をいじると子Boxだけが動く
+      boxChild.position.x = 0;
+      boxChild.position.y = 2;
+      boxChild.position.z = 0;
+
+      boxChild.rotation.x = Math.PI / 4;
+      boxChild.rotation.y = Math.PI / 4;
+      boxChild.rotation.z = Math.PI / 4;
+
+      // 親boxの座標をいじると子boxごと一緒に動く
+      boxParent.position.x = 2;
+      boxParent.position.y = 0;
+      boxParent.position.z = 0;
+
+      boxParent.rotation.x = 0;
+      boxParent.rotation.y = 0;
+      boxParent.rotation.z = -Math.PI / 4;
+
+      const boxChildAxes = localAxes(1, scene);
+      boxChildAxes.parent = boxChild;
+      showAxis(6, scene);
+    }
+
+    /***********Create and Draw Axes**************************************/
+    const showAxis = (size, scene) => {
+      const makeTextPlane = (text, color, size) => {
+        const dynamicTexture = new BABYLON.DynamicTexture("DynamicTexture", 50, scene, true);
+        dynamicTexture.hasAlpha = true;
+        dynamicTexture.drawText(text, 5, 40, "bold 36px Arial", color, "transparent", true);
+        const plane = new BABYLON.Mesh.CreatePlane("TextPlane", size, scene, true);
+        plane.material = new BABYLON.StandardMaterial("TextPlaneMaterial", scene);
+        plane.material.backFaceCulling = false;
+        plane.material.specularColor = new BABYLON.Color3(0, 0, 0);
+        plane.material.diffuseTexture = dynamicTexture;
+        return plane;
+      };
+
+      const axisX = BABYLON.Mesh.CreateLines("axisX", [
+        new BABYLON.Vector3.Zero(), new BABYLON.Vector3(size, 0, 0), new BABYLON.Vector3(size * 0.95, 0.05 * size, 0),
+        new BABYLON.Vector3(size, 0, 0), new BABYLON.Vector3(size * 0.95, -0.05 * size, 0)
+      ]);
+      axisX.color = new BABYLON.Color3(1, 0, 0);
+      const xChar = makeTextPlane("X", "red", size / 10);
+      xChar.position = new BABYLON.Vector3(0.9 * size, -0.05 * size, 0);
+
+      const axisY = BABYLON.Mesh.CreateLines("axisY", [
+        new BABYLON.Vector3.Zero(), new BABYLON.Vector3(0, size, 0), new BABYLON.Vector3(-0.05 * size, size * 0.95, 0),
+        new BABYLON.Vector3(0, size, 0), new BABYLON.Vector3(0.05 * size, size * 0.95, 0)
+      ]);
+      axisY.color = new BABYLON.Color3(0, 1, 0);
+      const yChar = makeTextPlane("Y", "green", size / 10);
+      yChar.position = new BABYLON.Vector3(0, 0.9 * size, -0.05 * size);
+
+      const axisZ = BABYLON.Mesh.CreateLines("axisZ", [
+        new BABYLON.Vector3.Zero(), new BABYLON.Vector3(0, 0, size), new BABYLON.Vector3(0, -0.05 * size, size * 0.95),
+        new BABYLON.Vector3(0, 0, size), new BABYLON.Vector3(0, 0.05 * size, size * 0.95)
+      ]);
+      axisZ.color = new BABYLON.Color3(0, 0, 1);
+      const zChar = makeTextPlane("Z", "blue", size / 10);
+      zChar.position = new BABYLON.Vector3(0, 0.05 * size, 0.9 * size);
+    };
+
+    /*******************************Local Axes****************************/
+    localAxes = (size, scene) => {
+      const local_axisX = BABYLON.Mesh.CreateLines("local_axisX", [
+        new BABYLON.Vector3.Zero(), new BABYLON.Vector3(size, 0, 0), new BABYLON.Vector3(size * 0.95, 0.05 * size, 0),
+        new BABYLON.Vector3(size, 0, 0), new BABYLON.Vector3(size * 0.95, -0.05 * size, 0)
+      ], scene);
+      local_axisX.color = new BABYLON.Color3(1, 0, 0);
+
+      local_axisY = BABYLON.Mesh.CreateLines("local_axisY", [
+        new BABYLON.Vector3.Zero(), new BABYLON.Vector3(0, size, 0), new BABYLON.Vector3(-0.05 * size, size * 0.95, 0),
+        new BABYLON.Vector3(0, size, 0), new BABYLON.Vector3(0.05 * size, size * 0.95, 0)
+      ], scene);
+      local_axisY.color = new BABYLON.Color3(0, 1, 0);
+
+      const local_axisZ = BABYLON.Mesh.CreateLines("local_axisZ", [
+        new BABYLON.Vector3.Zero(), new BABYLON.Vector3(0, 0, size), new BABYLON.Vector3(0, -0.05 * size, size * 0.95),
+        new BABYLON.Vector3(0, 0, size), new BABYLON.Vector3(0, 0.05 * size, size * 0.95)
+      ], scene);
+      local_axisZ.color = new BABYLON.Color3(0, 0, 1);
+
+      const local_origin = new BABYLON.TransformNode("local_origin");
+
+      local_axisX.parent = local_origin;
+      local_axisY.parent = local_origin;
+      local_axisZ.parent = local_origin;
+
+      return local_origin;
+    }
+
+    //+++++++関数化したものたち++++++++
+    const buildDwellings = (scene) => {
+      const ground = buildGround();
+
+      const detached_house = buildHouse(scene, 1);
+      detached_house.rotation.y = -Math.PI / 16;
+      detached_house.position.x = -6.8;
+      detached_house.position.z = 2.5;
+
+      const semi_house = buildHouse(scene, 2);
+      semi_house.rotation.y = -Math.PI / 16;
+      semi_house.position.x = -4.5;
+      semi_house.position.z = 3;
+
+      const places = [];
+      places.push([1, -Math.PI / 16, -6.8, 2.5]);
+      places.push([2, -Math.PI / 16, -4.5, 3]);
+      places.push([2, -Math.PI / 16, -1.5, 4]);
+      places.push([2, -Math.PI / 3, 1.5, 6]);
+      places.push([2, 15 * Math.PI / 16, -6.4, -1.5]);
+      places.push([1, 15 * Math.PI / 16, -4.1, -1]);
+      places.push([2, 15 * Math.PI / 16, -2.1, -0.5]);
+      places.push([1, 5 * Math.PI / 4, 0, -1]);
+      places.push([1, Math.PI + Math.PI / 2.5, 0.5, -3]);
+      places.push([2, Math.PI + Math.PI / 2.1, 0.75, -5]);
+      places.push([1, Math.PI + Math.PI / 2.25, 0.75, -7]);
+      places.push([2, Math.PI / 1.9, 4.75, -1]);
+      places.push([1, Math.PI / 1.95, 4.5, -3]);
+      places.push([2, Math.PI / 1.9, 4.75, -5]);
+      places.push([1, Math.PI / 1.9, 4.75, -7]);
+      places.push([2, -Math.PI / 3, 5.25, 2]);
+      places.push([1, -Math.PI / 3, 6, 4]);
+
+      const houses = [];
+      for (let i = 0; i < places.length; i++) {
+        if (places[i][0] === 1) {
+          houses[i] = detached_house.createInstance("house" + i);
+        }
+        else {
+          houses[i] = semi_house.createInstance("house" + i);
+        }
+        houses[i].rotation.y = places[i][1];
+        houses[i].position.x = places[i][2];
+        houses[i].position.z = places[i][3];
+      }
+
+    }
+
+    const buildGround = () => {
+      //color
+      const groundMat = new BABYLON.StandardMaterial("groundMat");
+      //groundMat.diffuseColor = new BABYLON.Color3(0, 1, 0); //r, g, bで設定する
+      groundMat.diffuseColor = new BABYLON.Color3.Green();
+      const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 20, height: 20 });
+      ground.material = groundMat;
+    }
+
+    const buildHouse = (scene, width) => {
+      const box = buildBox(width);
+      const roof = buildRoof(scene, width);
+
+      house = BABYLON.Mesh.MergeMeshes([box, roof], true, false, null, false, true);
+
+      return house;
+    }
+
+    const buildBox = (width) => {
+      // texture
+      const boxMat = new BABYLON.StandardMaterial("boxMat");
+      if (width == 2) {
+        boxMat.diffuseTexture = new BABYLON.Texture("https://assets.babylonjs.com/environments/semihouse.png");
+      }
+      else {
+        boxMat.diffuseTexture = new BABYLON.Texture("https://assets.babylonjs.com/environments/cubehouse.png");
+      }
+
+      const faceUV = [];
+      if (width == 2) {
+        faceUV[0] = new BABYLON.Vector4(0.6, 0.0, 1.0, 1.0);
+        faceUV[1] = new BABYLON.Vector4(0.0, 0.0, 0.4, 1.0);
+        faceUV[2] = new BABYLON.Vector4(0.4, 0.0, 0.6, 1.0);
+        faceUV[3] = new BABYLON.Vector4(0.4, 0.0, 0.6, 1.0);
+      }
+      else {
+        faceUV[0] = new BABYLON.Vector4(0.5, 0.0, 0.75, 1.0);
+        faceUV[1] = new BABYLON.Vector4(0.0, 0.0, 0.25, 1.0);
+        faceUV[2] = new BABYLON.Vector4(0.25, 0.0, 0.5, 1.0);
+        faceUV[3] = new BABYLON.Vector4(0.75, 0.0, 1.0, 1.0);
+      }
+
+      //箱を作成
+      const box = BABYLON.MeshBuilder.CreateBox("box", { width: width, faceUV: faceUV, wrap: true });
+      box.position.y = 0.5;
+      box.material = boxMat;
+
+      return box;
+    }
+
+    const buildRoof = (scene, width) => {
+      //色を追加
+      //屋根
+      const roofMat = new BABYLON.StandardMaterial("roofMat");
+      roofMat.diffuseTexture = new BABYLON.Texture("https://assets.babylonjs.com/environments/roof.jpg", scene);
+
+      //屋根を作成
+      const roof = BABYLON.MeshBuilder.CreateCylinder(
+        "roof",
+        { diameter: 1.3, height: 1.2, tessellation: 3 }
+      );
+
+      //サイズ、回転、位置調整
+      roof.scaling.y = width;
+      roof.position.y = 1.3;
+      roof.rotation.z = Math.PI / 2;
+
+      roof.material = roofMat;
+
+      return roof;
+    }
+
+    const buildCar = (scene) => {
+      //3-02 車
+      //base
+      const outline = [
+        new BABYLON.Vector3(-0.3, 0, -0.1),
+        new BABYLON.Vector3(0.2, 0, -0.1),
+      ]
+      //カーブした全面
+      for (let i = 0; i < 20; i++) {
+        outline.push(new BABYLON.Vector3(0.2 * Math.cos(i * Math.PI / 40), 0, 0.2 * Math.sin(i * Math.PI / 40) - 0.1));
+      }
+
+      //上部
+      outline.push(new BABYLON.Vector3(0, 0, 0.1));
+      outline.push(new BABYLON.Vector3(-0.3, 0, 0.1));
+
+      //面のUV
+      const faceUV = [];
+      faceUV[0] = new BABYLON.Vector4(0, 0.5, 0.38, 1);
+      faceUV[1] = new BABYLON.Vector4(0, 0, 1, 0.5);
+      faceUV[2] = new BABYLON.Vector4(0.38, 1, 0, 0.5);
+
+      //マテリアル
+      const carMat = new BABYLON.StandardMaterial("carMat");
+      carMat.diffuseTexture = new BABYLON.Texture("https://assets.babylonjs.com/environments/car.png");
+
+
+      // 深さ depth: 0.2 で押し出している
+      const car = BABYLON.MeshBuilder.ExtrudePolygon(
+        "car",
+        {
+          shape: outline,
+          depth: 0.2,
+          faceUV: faceUV,
+          wrap: true
+        }
+      );
+      car.material = carMat;
+      car.position.x = -5;
+      car.position.y = 0.16;
+      car.position.z = 1;
+      car.rotation.x = - Math.PI / 2;
+
+      // 車のアニメーション
+      const animCar = new BABYLON.Animation(
+        "carAnimation",
+        "position.x",
+        30,
+        BABYLON.Animation.ANIMATIONTYPE_FLOAT,
+        BABYLON.ANIMATIONLOOPMODE_CYCLE
+      );
+
+      const carKeys = [];
+
+      carKeys.push({
+        frame: 0,
+        value: -5
+      });
+
+      carKeys.push({
+        frame: 150,
+        value: 0
+      });
+
+      carKeys.push({
+        frame: 210,
+        value: 2
+      });
+
+      animCar.setKeys(carKeys);
+
+      car.animations = [];
+      car.animations.push(animCar);
+
+      scene.beginAnimation(car, 0, 210, true);
+
+
+      //車輪
+      //UV
+      const wheelUV = [];
+      wheelUV[0] = new BABYLON.Vector4(0, 0, 1, 1);
+      wheelUV[1] = new BABYLON.Vector4(0, 0.5, 0, 0.5);
+      wheelUV[2] = new BABYLON.Vector4(0, 0, 1, 1);
+      //マテリアル
+      const wheelMat = new BABYLON.StandardMaterial("wheelMat");
+      wheelMat.diffuseTexture = new BABYLON.Texture("https://assets.babylonjs.com/environments/wheel.png");
+
+      const wheelRB = BABYLON.MeshBuilder.CreateCylinder(
+        "wheelRB",
+        {
+          diameter: 0.125,
+          height: 0.05,
+          faceUV: wheelUV
+        }
+      );
+      wheelRB.material = wheelMat;
+      wheelRB.parent = car;
+      wheelRB.position.z = -0.1;
+      wheelRB.position.x = -0.2;
+      wheelRB.position.y = 0.035;
+
+      const wheelRF = wheelRB.clone("wheelRF");
+      wheelRF.position.x = 0.1;
+
+      const wheelLB = wheelRB.clone("wheelLB");
+      wheelLB.position.y = -0.2 - 0.035;
+
+      const wheelLF = wheelRF.clone("wheelLF");
+      wheelLF.position.y = -0.2 - 0.035;
+
+      //車輪のアニメーション
+      const animWheel = new BABYLON.Animation(
+        "wheelAnimation",
+        "rotation.y",
+        30,
+        BABYLON.Animation.ANIMATIONTYPE_FLOAT,
+        BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE);
+
+      const wheelKeys = [];
+
+      // キーフレーム（アニメーションキー）が0の時
+      // rotation.yに0を設定 
+      wheelKeys.push({
+        frame: 0,
+        value: 0
+      });
+
+      // キーフレームが30 (30 FPSなので1秒後のこと)の時、
+      // rotation.yに 2PI (360度)を設定し一回転を表す
+      wheelKeys.push({
+        frame: 30,
+        value: 2 * Math.PI
+      });
+
+      //　キーフレームをセット
+      animWheel.setKeys(wheelKeys);
+
+      //　このアニメーションを右後ろの車輪にリンクする
+      wheelRB.animations = [];
+      wheelRB.animations.push(animWheel);
+      wheelRF.animations = [];
+      wheelRF.animations.push(animWheel);
+      wheelLB.animations = [];
+      wheelLB.animations.push(animWheel);
+      wheelLF.animations = [];
+      wheelLF.animations.push(animWheel);
+
+      //アニメーションを開始する。
+      scene.beginAnimation(wheelRB, 0, 30, true);
+      scene.beginAnimation(wheelRF, 0, 30, true);
+      scene.beginAnimation(wheelLB, 0, 30, true);
+      scene.beginAnimation(wheelLF, 0, 30, true);
+
+      return car;
+    }
+
+    buildSphere = (scene) => {
+      // 玉を三角形上の辺で動かす
+      // 直径 0.25の球
+      const sphere = BABYLON.MeshBuilder.CreateSphere(
+        "sphere",
+        { diameter: 0.25 }
+      );
+      sphere.position = new BABYLON.Vector3(2, 0, 2);
+      //三角形
+      const points = [];
+      points.push(new BABYLON.Vector3(2, 0, 2));
+      points.push(new BABYLON.Vector3(2, 0, -2));
+      points.push(new BABYLON.Vector3(-2, 0, -2));
+      points.push(points[0]);
+      BABYLON.MeshBuilder.CreateLines("triangle", { points: points });
+
+      // 回転
+      //mesh.rotate(axis, angle, BABYLON.Space.LOCAL);
+      const slide = function (turn, dist) {
+        this.turn = turn; // 回転値
+        this.dist = dist; // 距離
+      }
+
+      // 追跡用の配列の入れ物を作る
+      const track = [];
+      // 最初の辺の長さが４
+      track.push(new slide(Math.PI / 2, 4));
+      // 二番目の辺を走り終える時の距離は 4+4
+      track.push(new slide(3 * Math.PI / 4, 8));
+      // 最初の辺の長さが４
+      track.push(new slide(3 * Math.PI / 4, 8 + 4 * Math.sqrt(2)));
+
+      let distance = 0;
+      let step = 0.05;
+      let p = 0;
+      scene.onBeforeRenderObservable.add(() => {
+        sphere.movePOV(0, 0, step);
+        distance += step;
+
+        if (distance > track[p].dist) {
+          sphere.rotate(BABYLON.Axis.Y, track[p].turn, BABYLON.Space.LOCAL);
+          p += 1;
+          p %= track.length;
+          if (p === 0) {
+            distance = 0;
+            sphere.position = new BABYLON.Vector3(2, 0, 2);
+            sphrere.ratation = BABYLON.Vector3.Zero();
+          }
+        }
+      });
+    }
+
+    buildDude = (scene) => {
+      //動くキャラ
+      //BABYLON.SceneLoader.ImportMeshAsync("", "https://assets.babylonjs.com/meshes/", "village.glb");
+
+      const walk = function (turn, dist) {
+        this.turn = turn;
+        this.dist = dist;
+      }
+
+      const track = [];
+      track.push(new walk(86, 7));
+      track.push(new walk(-85, 14.8));
+      track.push(new walk(-93, 16.5));
+      track.push(new walk(48, 25.5));
+      track.push(new walk(-112, 30.5));
+      track.push(new walk(-72, 33.2));
+      track.push(new walk(42, 37.5));
+      track.push(new walk(-98, 45.2));
+      track.push(new walk(0, 47));
+
+      // Dude
+      BABYLON.SceneLoader.ImportMeshAsync("him", "scenes/Dude/", "Dude.babylon", scene).then((result) => {
+        var dude = result.meshes[0];
+        dude.scaling = new BABYLON.Vector3(0.008, 0.008, 0.008);
+
+        dude.position = new BABYLON.Vector3(-6, 0, 0);
+        dude.rotate(BABYLON.Axis.Y, BABYLON.Tools.ToRadians(-95), BABYLON.Space.LOCAL);
+        const startRotation = dude.rotationQuaternion.clone();
+
+        scene.beginAnimation(result.skeletons[0], 0, 100, true, 1.0);
+
+        let distance = 0;
+        let step = 0.015;
+        let p = 0;
+
+        scene.onBeforeRenderObservable.add(() => {
+          dude.movePOV(0, 0, step);
+          distance += step;
+
+          if (distance > track[p].dist) {
+            dude.rotate(BABYLON.Axis.Y, BABYLON.Tools.ToRadians(track[p].turn), BABYLON.Space.LOCAL);
+            p += 1;
+            p %= track.length;
+            if (p === 0) {
+              distance = 0;
+              dude.position = new BABYLON.Vector3(-6, 0, 0);
+              dude.rotationQuaternion = startRotation.clone();
+            }
+          }
+        });
+      });
+    }
+
+    // createSceneを呼ぶ
+    const scene = createScene();
+
+    // シーンを継続的にレンダリングするためにレンダーループに登録する
+    engine.runRenderLoop(function () {
+      scene.render();
+    });
+
+    // ブラウザのリサイズイベントを監視する
+    window.addEventListener("resize", function () {
+      engine.resize();
+    });
+
+  </script>
+
+</body>
+
+</html>
